@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/viewGastos"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:theme="@style/AppThemeNoActionBar"
+    android:background="#fff"
+    tools:context=".Gastos">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        >
+
+        <androidx.appcompat.widget.Toolbar
+            android:id="@+id/toolbarGastos"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/fondo_toolbar"
+            android:minHeight="50dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:id="@+id/btnAtrasGastos"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_gravity="center_vertical"
+                    android:src="@drawable/back" />
+
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginLeft="10dp"
+                    android:layout_weight="1"
+                    android:text="Gastos"
+
+                    android:textColor="#fff"
+                    android:textSize="30dp"
+                    android:textStyle="bold" />
+
+                <ImageView
+                    android:id="@+id/btnNuevoGasto"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginRight="10dp"
+                    android:src="@drawable/add"
+
+
+                    />
+
+
+            </LinearLayout>
+        </androidx.appcompat.widget.Toolbar>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:background="#fff"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:layout_width="35dp"
+                android:layout_height="35dp"
+                app:srcCompat="@drawable/lupa3" />
+
+            <EditText
+                android:id="@+id/txtSearchGastos"
+                android:layout_width="match_parent"
+                android:layout_height="35dp"
+                android:layout_weight="1"
+                android:background="#fff"
+                android:hint="Busqueda..."
+                tools:context=".SearchAndFilterList"
+
+                />
+
+            <ImageView
+                android:id="@+id/btnClearSearchGastos"
+                android:layout_width="35dp"
+                android:layout_height="35dp"
+                app:srcCompat="@drawable/borrar" />
+
+
+            <ImageView
+                android:id="@+id/btnCalendarioGastos"
+                android:layout_width="35dp"
+                android:layout_height="35dp"
+                android:layout_marginLeft="5dp"
+                android:background="#fff"
+                app:srcCompat="@drawable/calendar" />
+
+            <ImageView
+                android:id="@+id/btnFiltroSearchGastos"
+                android:layout_width="35dp"
+                android:layout_height="35dp"
+                android:layout_marginLeft="5dp"
+                android:background="#fff"
+                app:srcCompat="@drawable/filter" />
+
+            <ImageView
+                android:id="@+id/btnReporteGastos"
+                android:layout_width="35dp"
+                android:layout_height="35dp"
+                android:layout_marginLeft="5dp"
+                android:background="#fff"
+                app:srcCompat="@drawable/report" />
+
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/txtFiltrosGastos"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/btnFiltroSearchGastos"
+            android:layout_gravity="center_vertical"
+            android:background="#fff"
+            android:text="Periodo: 20/09/2020 - 22/09/2020 status: todos"
+            android:textColor="#198CE9"
+            android:textSize="12sp"
+            android:textStyle="bold|italic" />
+
+
+        <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:id="@+id/srlContainerGastos">
+            <ListView
+                android:id="@+id/listViewGastos"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_below="@+id/txtFiltrosGastos"
+                android:divider="@android:color/transparent"
+                >
+
+            </ListView>
+
+
+        </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+
+    </LinearLayout>
+
+
+
+</RelativeLayout>

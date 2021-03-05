@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/viewCatalogoUsuarios"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:theme="@style/AppThemeNoActionBar"
+    android:background="#fff"
+    tools:context=".Usuarios">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        >
+
+        <androidx.appcompat.widget.Toolbar
+            android:minHeight="50dp"
+            android:id="@+id/toolbarCatalogoUsuarios"
+            android:background="@color/fondo_toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <LinearLayout
+                android:orientation="horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <ImageView
+                    android:src="@drawable/back"
+                    android:id="@+id/btnAtrasCatalogoUsuarios"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_gravity="center_vertical"
+                    />
+
+
+
+                <TextView
+                    android:textColor="#fff"
+                    android:text="Usuarios"
+                    android:textSize="30dp"
+                    android:textStyle="bold"
+                    android:layout_marginLeft="10dp"
+                    android:layout_weight="1"
+
+                    android:layout_width="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:layout_height="wrap_content" />
+
+                <ImageView
+                    android:src="@drawable/add"
+                    android:id="@+id/btnNuevoCatalogoUsuarios"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginRight="10dp"
+
+
+                    />
+
+
+            </LinearLayout>
+        </androidx.appcompat.widget.Toolbar>
+        <LinearLayout
+            android:orientation="horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:id="@+id/pnlFiltrosCatalogoUsuarios"
+            android:background="#fff">
+
+            <ImageView
+                android:layout_width="35dp"
+                android:layout_height="35dp"
+                app:srcCompat="@drawable/lupa3" />
+            <EditText
+                android:layout_width="match_parent"
+                android:layout_weight="1"
+                android:layout_height="35dp"
+                android:id="@+id/txtSearchCatalogoUsuarios"
+                android:background="#fff"
+                tools:context=".SearchAndFilterList"
+                android:hint="Busqueda..."
+
+                />
+
+            <ImageView
+                android:layout_width="35dp"
+                android:layout_height="35dp"
+                android:id="@+id/btnClearSearchCatalogoUsuarios"
+                app:srcCompat="@drawable/borrar" />
+
+
+
+
+        </LinearLayout>
+        <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/srlContainerUsuarios">
+            <ListView
+                android:id="@+id/listViewCatalogoUsuarios"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_below="@+id/pnlFiltrosCatalogoUsuarios"
+                android:divider="@android:color/transparent"
+                >
+
+            </ListView>
+        </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
+    </LinearLayout>
+
+
+
+</RelativeLayout>

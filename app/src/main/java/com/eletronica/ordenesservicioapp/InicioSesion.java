@@ -109,7 +109,9 @@ public class InicioSesion extends AppCompatActivity implements Response.Listener
             usuario.setNombre(jsonObject.optString("nombre"));
             usuario.setId_usuario(parseInt(jsonObject.optString("id_usuario")));
             usuario.setRol(parseInt(jsonObject.optString("rol")));
+
             GlobalVariables variablesGlobales = new GlobalVariables();
+
             variablesGlobales.id_usuario = usuario.getId_usuario();
             variablesGlobales.usuario = usuario.getUsuario();
             variablesGlobales.nombre_Usuario = usuario.getNombre();

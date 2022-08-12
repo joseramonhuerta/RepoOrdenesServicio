@@ -46,6 +46,17 @@
                     android:textStyle="bold" />
 
                 <ImageView
+                    android:id="@+id/btnBuscarQr"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginRight="5dp"
+                    android:src="@drawable/barcodeqr"
+
+
+                    />
+
+                <ImageView
                     android:id="@+id/btnNuevaOrden"
                     android:layout_width="40dp"
                     android:layout_height="40dp"

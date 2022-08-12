@@ -9,6 +9,8 @@
     android:orientation="vertical"
     tools:context=".NuevaOrdenServicio">
 
+    <!-- Toolbar -->
+
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/toolbarNuevaOrden"
         android:layout_width="match_parent"
@@ -44,6 +46,17 @@
                 android:textStyle="bold" />
 
             <ImageView
+                android:id="@+id/btnImprimirRecibo"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_gravity="center_vertical"
+                android:layout_marginRight="5dp"
+                android:src="@drawable/barcodeqr"
+
+
+                />
+
+            <ImageView
                 android:id="@+id/btnLimpiarOrden"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
@@ -58,6 +71,7 @@
         </LinearLayout>
     </androidx.appcompat.widget.Toolbar>
 
+    <!-- Tabs -->
 
     <TabHost
         android:id="@+id/tabOrdenes"
@@ -83,6 +97,8 @@
                 android:layout_marginLeft="10dp"
                 android:layout_marginRight="10dp">
 
+                <!-- Tab Generales-->
+
                 <LinearLayout
                     android:id="@+id/tabGenerales"
                     android:layout_width="match_parent"
@@ -102,7 +118,7 @@
                             android:isScrollContainer="true"
                             android:orientation="vertical">
 
-                            <!-- Datos Generales -->
+
                             <LinearLayout
                                 android:id="@+id/groupGenerales"
                                 android:layout_width="match_parent"
@@ -164,6 +180,44 @@
 
                                     </LinearLayout>
 
+                                </LinearLayout>
+
+                                <LinearLayout
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="10dp"
+                                    android:orientation="vertical">
+
+                                    <FrameLayout
+                                        xmlns:android="http://schemas.android.com/apk/res/android"
+                                        android:id="@+id/fragment_qc_flSelectWorkDone3"
+                                        android:layout_width="match_parent"
+                                        android:layout_height="wrap_content">
+
+                                        <FrameLayout
+                                            android:background="@drawable/drawable_spinner_border"
+                                            android:layout_width="match_parent"
+                                            android:layout_height="wrap_content">
+
+                                            <Spinner
+                                                android:id="@+id/spnTipoOrden"
+                                                android:layout_width="match_parent"
+                                                android:textSize="12sp"
+                                                android:spinnerMode="dropdown"
+                                                android:layout_height="50dp"/>
+                                        </FrameLayout>
+
+                                        <TextView
+                                            android:paddingStart="2dp"
+                                            android:paddingEnd="2dp"
+                                            android:layout_marginLeft="10dp"
+                                            android:layout_marginTop="-5dp"
+                                            android:textSize="12sp"
+                                            android:text="Tipo Orden"
+                                            android:background="#FFFFFF"
+                                            android:layout_width="wrap_content"
+                                            android:layout_height="wrap_content"/>
+                                    </FrameLayout>
                                 </LinearLayout>
 
                                 <LinearLayout
@@ -372,6 +426,8 @@
 
                 </LinearLayout>
 
+                <!-- Tab Tecnicos-->
+
                 <LinearLayout
                     android:id="@+id/tabTecnicos"
                     android:layout_width="match_parent"
@@ -510,6 +566,8 @@
 
                 </LinearLayout>
 
+                <!-- Tab Admin-->
+
                 <LinearLayout
                     android:id="@+id/tabAdmin"
                     android:layout_width="match_parent"
@@ -625,6 +683,52 @@
 
                                 </LinearLayout>
 
+                                <LinearLayout
+                                    android:id="@+id/layPuntoVenta"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="10dp"
+                                    android:orientation="vertical">
+
+                                    <FrameLayout
+                                        xmlns:android="http://schemas.android.com/apk/res/android"
+                                        android:id="@+id/fragment_qc_flSelectWorkDone4"
+                                        android:layout_width="match_parent"
+                                        android:layout_height="wrap_content">
+
+                                        <FrameLayout
+                                            android:background="@drawable/drawable_spinner_border"
+                                            android:layout_width="match_parent"
+                                            android:layout_height="wrap_content">
+
+                                            <Spinner
+                                                android:id="@+id/txtPuntoVenta"
+                                                android:layout_width="match_parent"
+                                                android:textSize="12sp"
+                                                android:spinnerMode="dropdown"
+                                                android:layout_height="50dp"/>
+                                        </FrameLayout>
+
+                                        <TextView
+                                            android:paddingStart="2dp"
+                                            android:paddingEnd="2dp"
+                                            android:layout_marginLeft="10dp"
+                                            android:layout_marginTop="-5dp"
+                                            android:textSize="12sp"
+                                            android:text="Punto Venta"
+                                            android:background="#FFFFFF"
+                                            android:layout_width="wrap_content"
+                                            android:layout_height="wrap_content"/>
+                                    </FrameLayout>
+                                </LinearLayout>
+
+                                <ImageView
+                                    android:id="@+id/ivImagenQr"
+                                    android:layout_width="fill_parent"
+                                    android:layout_height="wrap_content"
+                                    android:adjustViewBounds="true"
+                                    android:scaleType="fitCenter" />
+
                             </LinearLayout>
                         </LinearLayout>
 
@@ -632,8 +736,112 @@
                     </ScrollView>
 
                 </LinearLayout>
+
+                <!-- Tab Venta-->
+
+                <LinearLayout
+                    android:id="@+id/tabVenta"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical">
+
+                    <ScrollView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:scrollbarStyle="outsideInset"
+                        android:scrollbars="horizontal">
+
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:layout_margin="5dp"
+                            android:isScrollContainer="true"
+                            android:orientation="vertical">
+
+                            <!-- Datos Ventas -->
+                            <LinearLayout
+                                android:id="@+id/groupVentas"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="vertical">
+
+                                <LinearLayout
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="10dp"
+                                    android:orientation="vertical">
+
+                                    <LinearLayout
+                                        android:layout_width="match_parent"
+                                        android:layout_height="wrap_content"
+                                        android:orientation="horizontal">
+
+                                        <com.google.android.material.textfield.TextInputLayout
+                                            android:id="@+id/txtNombreClienteVenta"
+                                            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                                            android:layout_width="match_parent"
+                                            android:layout_height="wrap_content"
+                                            android:layout_weight="1"
+                                            android:hint="Cliente">
+
+                                            <com.google.android.material.textfield.TextInputEditText
+                                                android:layout_width="match_parent"
+                                                android:layout_height="wrap_content"
+                                                android:focusable="false"
+                                                android:inputType="textPersonName" />
+
+                                        </com.google.android.material.textfield.TextInputLayout>
+
+                                        <ImageView
+                                            android:id="@+id/btnNuevoClienteVenta"
+                                            android:layout_width="50dp"
+                                            android:layout_height="50dp"
+                                            android:layout_gravity="center_vertical"
+                                            android:layout_marginLeft="5dp"
+                                            android:src="@drawable/add" />
+
+                                    </LinearLayout>
+
+                                </LinearLayout>
+
+                                <LinearLayout
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="10dp"
+                                    android:orientation="vertical">
+
+                                    <com.google.android.material.textfield.TextInputLayout
+                                        android:id="@+id/txtPrecioVenta"
+                                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                                        android:layout_width="match_parent"
+                                        android:layout_height="wrap_content"
+                                        android:hint="Precio Venta">
+
+                                        <com.google.android.material.textfield.TextInputEditText
+                                            android:layout_width="match_parent"
+                                            android:layout_height="wrap_content"
+                                            android:inputType="numberDecimal" />
+
+                                    </com.google.android.material.textfield.TextInputLayout>
+
+
+                                </LinearLayout>
+
+                            </LinearLayout>
+
+                        </LinearLayout>
+
+
+                    </ScrollView>
+
+                </LinearLayout>
+
+
             </FrameLayout>
+
         </LinearLayout>
+
     </TabHost>
 
     <!-- Botones -->

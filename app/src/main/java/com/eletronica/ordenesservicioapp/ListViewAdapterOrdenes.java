@@ -1,4 +1,4 @@
-package com.eletronica.ordenesservicioapp;
+   package com.eletronica.ordenesservicioapp;
 
 import android.app.Dialog;
 import android.content.Context;
@@ -111,6 +111,12 @@ public class ListViewAdapterOrdenes extends BaseAdapter
             viewItem.ivStatus.setImageResource(R.drawable.icono_status_6);
         if(TempOrdenesList.get(position).status_servicio == 7)
             viewItem.ivStatus.setImageResource(R.drawable.icono_status_7);
+        if(TempOrdenesList.get(position).status_servicio == 8)
+            viewItem.ivStatus.setImageResource(R.drawable.icono_status_6);
+        if(TempOrdenesList.get(position).status_servicio == 9)
+            viewItem.ivStatus.setImageResource(R.drawable.icono_status_6);
+        if(TempOrdenesList.get(position).status_servicio == 10)
+            viewItem.ivStatus.setImageResource(R.drawable.icono_status_6);
 
 
         if(TempOrdenesList.get(position).status_servicio == 1)
@@ -128,6 +134,12 @@ public class ListViewAdapterOrdenes extends BaseAdapter
         if(TempOrdenesList.get(position).status_servicio == 7)
             viewItem.txtStatus.setTextColor(Color.parseColor("#DF0101" +
                     ""));
+        if(TempOrdenesList.get(position).status_servicio == 8)
+            viewItem.txtStatus.setTextColor(Color.parseColor("#0431B4"));
+        if(TempOrdenesList.get(position).status_servicio == 9)
+            viewItem.txtStatus.setTextColor(Color.parseColor("#0431B4"));
+        if(TempOrdenesList.get(position).status_servicio == 10)
+            viewItem.txtStatus.setTextColor(Color.parseColor("#0431B4"));
 
         viewItem.txtFolio.setText(String.valueOf(TempOrdenesList.get(position).id_orden_servicio));
         viewItem.txtNombreCliente.setText(TempOrdenesList.get(position).nombre_cliente);

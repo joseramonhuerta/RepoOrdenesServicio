@@ -52,7 +52,6 @@ public class Clientes extends AppCompatActivity implements SwipeRefreshLayout.On
     static View mView;
     androidx.appcompat.widget.Toolbar myToolbar;
     EditText txtSearch;
-
     // Server Http URL
     String HTTP_URL;
 
@@ -60,16 +59,9 @@ public class Clientes extends AppCompatActivity implements SwipeRefreshLayout.On
     ImageView btnAtras;
     ImageView btnClear;
     SwipeRefreshLayout swipeContainer;
-    FragmentManager fm = getSupportFragmentManager();
-    ProgressDialog pDialogo = null;
 
-    public static final int DIALOGO_FRAGMENT = 1;
-    // String to hold complete JSON response object.
     String FinalJSonObject ;
-    String FinalJSonObjectTecnicos;
 
-    String FechaInicio;
-    String FechaFin;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -83,10 +75,7 @@ public class Clientes extends AppCompatActivity implements SwipeRefreshLayout.On
 
         //txtSearch.addTextChangedListener(searchTextWatcher);
 
-
-
         listView = (ListView) findViewById(R.id.listViewCatalogoClientes);
-
 
         // btnActualizarEntregar = (Button) view.findViewById(R.id.btnActualizarEntregar);
 
@@ -96,7 +85,6 @@ public class Clientes extends AppCompatActivity implements SwipeRefreshLayout.On
         btnAtras = (ImageView) findViewById(R.id.btnAtrasCatalogoClientes);
         btnClear = (ImageView) findViewById(R.id.btnClearSearchCatalogoClientes);
         swipeContainer = (SwipeRefreshLayout) findViewById(R.id.srlContainerClientes);
-
 
         btnNueva.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -142,7 +130,6 @@ public class Clientes extends AppCompatActivity implements SwipeRefreshLayout.On
         });
 
         GlobalVariables vg = new GlobalVariables();
-
 
         loadClientes(mView);
 

@@ -63,19 +63,21 @@ public class CuadroDialogoClientes extends DialogFragment {
     int id_cliente=0;
     String nombre_cliente="";
     String celular="";
+    int tipo=0;
 
     public interface ActualizarCliente {
 
-        public void actualizaActividadCliente(View view,int id_cliente,String nombre_cliente, String celular);
+        public void actualizaActividadCliente(View view,int id_cliente,String nombre_cliente, String celular, int tipo);
     }
 
     CuadroDialogoClientes.ActualizarCliente listener;
     Activity activity;
 
-    public CuadroDialogoClientes(Context context, FragmentManager fm, View view) {
+    public CuadroDialogoClientes(Context context, FragmentManager fm, View view, int tipo) {
         this.mContext = context;
         this.fm = fm;
         this.mView = view;
+        this.tipo = tipo;
     }
 
     @Override
@@ -114,11 +116,9 @@ public class CuadroDialogoClientes extends DialogFragment {
             @Override
             public void onClick(View v) {
                 dialogo.dismiss();
-                listener.actualizaActividadCliente(mView,id_cliente,nombre_cliente, celular);
+                listener.actualizaActividadCliente(mView,id_cliente,nombre_cliente, celular, tipo);
             }
         });
-
-
 
         btnSalirCliente.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -155,8 +155,6 @@ public class CuadroDialogoClientes extends DialogFragment {
         });
 
         loadClientes(v);
-
-
 
         return v;
 

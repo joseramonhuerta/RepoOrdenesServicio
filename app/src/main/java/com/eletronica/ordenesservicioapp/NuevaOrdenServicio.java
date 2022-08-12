@@ -14,6 +14,9 @@ import android.app.AlertDialog;
 import android.app.DatePickerDialog;
 import android.app.Dialog;
 import android.app.ProgressDialog;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothSocket;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -25,6 +28,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.Matrix;
+import android.graphics.Point;
 import android.graphics.drawable.Drawable;
 import android.media.ExifInterface;
 import android.net.Uri;
@@ -38,7 +42,9 @@ import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Base64;
 import android.util.Log;
+import android.view.Display;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -69,6 +75,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -78,21 +87,30 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.UUID;
 
 import com.eletronica.ordenesservicioapp.R;
 import com.google.android.material.textfield.TextInputLayout;
+import com.mazenrashed.printooth.utilities.Printing;
 
+import androidmads.library.qrgenearator.QRGContents;
+import androidmads.library.qrgenearator.QRGEncoder;
 import cn.pedant.SweetAlert.SweetAlertDialog;
 
+import static java.lang.Integer.parseInt;
 
 
 public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialogoClientes.ActualizarCliente {
 
     int id_orden_servicio = 0;
     int id_cliente = 0;
+    int id_cliente_venta = 0;
     View mView;
     String HTTP_URL;
     String FinalJSonObject;
+    String FinalJSonObjectConfiguracion;
+    String FinalJSonObjectTecnicos;
+    String FinalJSonObjectPuntosVentas;
     String foto;
     String nombreImagen;
     String fotoBack;
@@ -116,16 +134,21 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
     TextInputLayout txtReparacion;
     TextInputLayout txtPresupuesto;
     TextInputLayout txtCelular;
+    TextInputLayout txtNombreClienteVenta;
+    TextInputLayout txtPrecioVenta;
 
     LinearLayout groupGenerales;
     LinearLayout groupTecnicos;
     LinearLayout groupAdministracion;
+    LinearLayout groupVenta;
     LinearLayout layFechaEntrega;
+    LinearLayout layPuntoVenta;
 
     ImageView btnAtras;
     ImageView ivImagen;
     ImageView ivImagenBack;
     ImageView ivImagenTecnico;
+    ImageView ivImagenQr;
 
     Button btnGuardar;
     ImageView btnLimpiar;
@@ -133,20 +156,25 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
     ImageView btnCamaraBack;
     ImageView btnCamaraTecnico;
     ImageView btnNuevoCliente;
-
+    ImageView btnImprimirRecibo;
+    ImageView btnNuevoClienteVenta;
 
     Spinner spnStatus;
     Spinner txtTecnico;
+    Spinner spnTipoOrden;
+    Spinner txtPuntoVenta;
 
     Bitmap photobmp = null;
     Bitmap photobmpBack = null;
     Bitmap photobmpTecnico = null;
 
     TabHost tabs;
-    TabHost.TabSpec ts1,ts2,ts3;
+    TabHost.TabSpec ts1,ts2,ts3,ts4;
 
     public int statusSelected=-1;
     public int tecnicoSelected=-1;
+    public int tipoSelected=-1;
+    public int puntoventaSelected=-1;
 
     Dialog dialogo = null;
 
@@ -155,22 +183,63 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
     SweetAlertDialog pDialogo;
 
     ArrayList<Tecnico> tecnicosList;
+    ArrayList<PuntoVenta> puntosventasList;
     String[] spinnerArray;
+    String[] spinnerArrayPuntoVenta;
     HashMap<Integer,Integer> spinnerMap;
+    HashMap<Integer,Integer> spinnerMapPuntoVenta;
 
     int enviarMSMCliente = 0;
     int reenviarImagen = 0;
     int reenviarImagenBack = 0;
     int reenviarImagenTecnico = 0;
 
+    QRGEncoder qrgEncoder;
 
+    private static final int REQUEST_DISPOSITIVO = 425;
+    private static final int LIMITE_CARACTERES_POR_LINEA = 32;
+    private static final String TAG_DEBUG = "tag_debug";
+    private static final int IR_A_DIBUJAR = 632;
+    private static final int COD_PERMISOS = 872;
+    private static final int INTENT_CAMARA = 123;
+    private static final int INTENT_GALERIA = 321;
+    private final int ANCHO_IMG_58_MM = 384;
+    private static final int MODE_PRINT_IMG = 0;
 
+    public static final byte[] ESC_ALIGN_LEFT = new byte[] { 0x1b, 'a', 0x00 };
+    public static final byte[] ESC_ALIGN_RIGHT = new byte[] { 0x1b, 'a', 0x02 };
+    public static final byte[] ESC_ALIGN_CENTER = new byte[] { 0x1b, 'a', 0x01 };
+    public static final byte[] ESC_CANCEL_BOLD = new byte[] { 0x1B, 0x45, 0 };
+
+    private volatile boolean pararLectura;
+    private BluetoothAdapter bluetoothAdapter;
+    private BluetoothDevice dispositivoBluetooth;
+    private BluetoothSocket bluetoothSocket;
+
+    private UUID aplicacionUUID = UUID
+            .fromString("00001101-0000-1000-8000-00805F9B34FB");
+    // Para el flujo de datos de entrada y salida del socket bluetooth
+    private OutputStream outputStream;
+    private InputStream inputStream;
+
+    Printing printing;
+    boolean conectada = false;
+
+    OrdenServicio ordenImpresion;
 
     @Override
-    public void actualizaActividadCliente(View view, int id_cliente, String nombre_cliente, String celular) {
-        this.id_cliente = id_cliente;
-        txtNombreCliente.getEditText().setText(nombre_cliente);
-        txtCelular.getEditText().setText(celular);
+    public void actualizaActividadCliente(View view, int id_cliente, String nombre_cliente, String celular, int tipo) {
+        if(tipo == 1) {
+            this.id_cliente = id_cliente;
+            txtNombreCliente.getEditText().setText(nombre_cliente);
+            txtCelular.getEditText().setText(celular);
+        }
+
+        if(tipo == 2){
+            this.id_cliente_venta = id_cliente;
+            txtNombreClienteVenta.getEditText().setText(nombre_cliente);
+        }
+
     }
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -179,19 +248,22 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
         mView = (View) findViewById(R.id.viewOrdenServicio);
 
+        //inicializamos el BlueTooth Adapter
+        bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+
         tabs = (TabHost) findViewById(R.id.tabOrdenes);
         tabs.setup();
 
         ts1 = tabs.newTabSpec("tabGenerales");
         Resources res = getResources();
         Drawable drawable = ResourcesCompat.getDrawable(res, R.drawable.info, null);
-        ts1.setIndicator("Generales", drawable);
+        ts1.setIndicator("General", drawable);
         ts1.setContent(R.id.tabGenerales);
         tabs.addTab(ts1);
 
         ts2 = tabs.newTabSpec("tabTecnicos");
         drawable = ResourcesCompat.getDrawable(res, R.drawable.manual, null);
-        ts2.setIndicator("Técnicos", drawable);
+        ts2.setIndicator("Técnico", drawable);
         ts2.setContent(R.id.tabTecnicos);
         tabs.addTab(ts2);
 
@@ -202,6 +274,11 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
         ts3.setContent(R.id.tabAdmin);
         tabs.addTab(ts3);
 
+        ts4 = tabs.newTabSpec("tabVenta");
+        drawable = ResourcesCompat.getDrawable(res, R.drawable.working, null);
+        ts4.setIndicator("Venta", drawable);
+        ts4.setContent(R.id.tabVenta);
+        tabs.addTab(ts4);
 
         txtFolio = (TextInputLayout) findViewById(R.id.txtFolio);
         txtNombreCliente = (TextInputLayout) findViewById(R.id.txtNombreCliente);
@@ -216,12 +293,17 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
         txtReparacion = (TextInputLayout) findViewById(R.id.txtReparacion);
         txtPresupuesto = (TextInputLayout) findViewById(R.id.txtPresupuesto);
         txtCelular = (TextInputLayout) findViewById(R.id.txtCelular);
+        txtPrecioVenta = (TextInputLayout) findViewById(R.id.txtPrecioVenta);
+        txtNombreClienteVenta = (TextInputLayout) findViewById(R.id.txtNombreClienteVenta);
+        txtPuntoVenta = (Spinner) findViewById(R.id.txtPuntoVenta);
 
         groupGenerales = (LinearLayout) findViewById(R.id.groupGenerales);
         groupTecnicos = (LinearLayout) findViewById(R.id.groupTecnicos);
         groupAdministracion = (LinearLayout) findViewById(R.id.groupAdministracion);
 
         layFechaEntrega = (LinearLayout) findViewById(R.id.layFechaEntrega);
+        groupVenta = (LinearLayout) findViewById(R.id.groupVentas);
+        layPuntoVenta = (LinearLayout) findViewById(R.id.layPuntoVenta);
 
         btnGuardar = (Button) findViewById(R.id.btnGuardarOrden);
         btnLimpiar = (ImageView) findViewById(R.id.btnLimpiarOrden);
@@ -230,36 +312,33 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
         btnCamaraBack = (ImageView) findViewById(R.id.btnCamaraBack);
         btnCamaraTecnico = (ImageView) findViewById(R.id.btnCamaraTecnico);
         btnNuevoCliente = (ImageView) findViewById(R.id.btnNuevoCliente);
+        btnImprimirRecibo = (ImageView) findViewById(R.id.btnImprimirRecibo);
+        btnNuevoCliente = (ImageView) findViewById(R.id.btnNuevoCliente);
+        btnNuevoClienteVenta = (ImageView) findViewById(R.id.btnNuevoClienteVenta);
 
         ivImagen = (ImageView) findViewById(R.id.ivImagen);
         ivImagenBack = (ImageView) findViewById(R.id.ivImagenBack);
         ivImagenTecnico = (ImageView) findViewById(R.id.ivImagenTecnico);
+        ivImagenQr = (ImageView) findViewById(R.id.ivImagenQr);
 
         spnStatus = (Spinner) findViewById(R.id.spnStatus);
+        spnTipoOrden = (Spinner) findViewById(R.id.spnTipoOrden);
 
-        //progressBar = (ProgressBar) findViewById(R.id.ProgressBarNuevaOrden);
-
-        String[] opciones = {"Recibido", "En Revision", "Cotizado", "En Reparacion","Reparado","Entregado","Devolucion"};
+        String[] opciones = {"Recibido", "En Revision", "Cotizado", "En Reparacion","Reparado","Entregado","Devolucion","Bodega", "En Tienda", "Vendida"};
         ArrayAdapter adapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_dropdown_item, opciones);
         spnStatus.setAdapter(adapter);
 
-        loadTecnicos(mView);
+        String[] opciones_tipo = {"Cargo", "Propia"};
+        ArrayAdapter adapter_tipo = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_dropdown_item, opciones_tipo);
+        spnTipoOrden.setAdapter(adapter_tipo);
 
         Bundle extras = getIntent().getExtras();
 
         id_orden_servicio = extras.getInt("ID");
         id_cliente = 0;
-
-        if(id_orden_servicio > 0){
-            loadOrden(mView);
-            setIconoLimpiar();
-
-        }else{
-            setValuesDefault();
-        }
+        id_cliente_venta = 0;
 
 
-        changeViewRol();
 
         btnAtras.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -281,7 +360,7 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
             public void onClick(View v) {
                 FragmentManager fm = getSupportFragmentManager();
                 FragmentTransaction ft = fm.beginTransaction();
-                CuadroDialogoClientes dialogoFragment = new CuadroDialogoClientes(mView.getContext(), fm, mView);
+                CuadroDialogoClientes dialogoFragment = new CuadroDialogoClientes(mView.getContext(), fm, mView, 1);
 
                 CuadroDialogoClientes tPrev =  (CuadroDialogoClientes) fm.findFragmentByTag("dialogo_clientes");
 
@@ -296,7 +375,8 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
         btnGuardar.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if(!validarCliente() | !validarEquipo() | !validarFalla() | !validarStatus()){
+
+                if(!validarCliente() | !validarEquipo() | !validarFalla() | !validarStatus() | !validarClienteVenta()){
                     return;
                 }
                 procesarGuardar(v);
@@ -318,7 +398,6 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
             }
         });
 
-
         spnStatus.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
@@ -330,6 +409,25 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
                     enviarMSMCliente = 0;
 
                 validarSeleccionStatus(position);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+
+            }
+        });
+
+        spnTipoOrden.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                tipoSelected = position;
+                //{"Recibido", "Revisión", "Cotización", "Reparación","Reparado","Entregado","Devolución"};
+                //if(position == 1 || position == 2 || position == 3 || position == 4)
+                //    enviarMSMCliente = 1;
+                //else
+                 //   enviarMSMCliente = 0;
+
+                validarSeleccionTipoOrden(position);
             }
 
             @Override
@@ -387,6 +485,146 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
             }
         });
 
+        btnImprimirRecibo.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                try{
+                    generarCodigoQr();
+                }catch (Exception ex){
+
+                }
+
+            }
+        });
+
+        btnNuevoClienteVenta.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intencion = new Intent(getApplicationContext(), NuevoCliente.class);
+                intencion.putExtra("ID", 0);
+                intencion.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                startActivity(intencion);
+
+            }
+        });
+
+        txtNombreClienteVenta.getEditText().setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                FragmentManager fm = getSupportFragmentManager();
+                FragmentTransaction ft = fm.beginTransaction();
+                CuadroDialogoClientes dialogoFragment = new CuadroDialogoClientes(mView.getContext(), fm, mView, 2);
+
+                CuadroDialogoClientes tPrev =  (CuadroDialogoClientes) fm.findFragmentByTag("dialogo_clientes");
+
+                if(tPrev!=null)
+                    ft.remove(tPrev);
+
+                //dialogoFragment.setTargetFragment(mainFrag, DIALOGO_FRAGMENT);
+                dialogoFragment.show(fm, "dialogo_clientes");
+            }
+        });
+
+
+
+        getConfiguracion(mView);
+
+
+
+    }
+
+    private void getConfiguracion(View mView){
+        View vista = mView;
+        try {
+
+            GlobalVariables variablesGlobales = new GlobalVariables();
+            String bd = variablesGlobales.bd;
+
+            HTTP_URL =variablesGlobales.URLServicio + "getconfiguracion.php?basedatos=" + bd;
+            // Creating StringRequest and set the JSON server URL in here.
+            StringRequest stringRequest = new StringRequest(HTTP_URL,
+                    new Response.Listener<String>() {
+                        @Override
+                        public void onResponse(String response) {
+
+                            // After done Loading store JSON response in FinalJSonObject string variable.
+                            FinalJSonObjectConfiguracion = response ;
+
+                            // Calling method to parse JSON object.
+                            new NuevaOrdenServicio.ParseJSonDataClassGetConfiguracion(vista).execute();
+
+                        }
+                    },
+                    new Response.ErrorListener() {
+                        @Override
+                        public void onErrorResponse(VolleyError error) {
+
+                            // Showing error message if something goes wrong.
+                            Toast.makeText(vista.getContext(),error.getMessage(),Toast.LENGTH_LONG).show();
+
+                        }
+                    });
+
+            // Creating String Request Object.
+            RequestQueue requestQueue = Volley.newRequestQueue(vista.getContext());
+
+            // Passing String request into RequestQueue.
+            requestQueue.add(stringRequest);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void generarCodigoQr(){
+
+        if(id_orden_servicio > 0){
+
+            try{
+                GlobalVariables vg = new GlobalVariables();
+                if(vg.config_imprimeticket == 1)
+                    imprimir();
+            }catch (Exception ex){
+                Toast.makeText(getApplicationContext(), ex.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+
+        }
+
+    }
+
+    private Bitmap getCodigoQr(){
+        Bitmap bitmap = null;
+        GlobalVariables variablesGlobales = new GlobalVariables();
+
+        String bd = variablesGlobales.bd;
+
+        String url = variablesGlobales.URLServicio + "getstatusorden.php?basedatos=" + bd + "&id_orden=" + String.valueOf(id_orden_servicio);
+
+        if(id_orden_servicio > 0){
+            WindowManager manager = (WindowManager) getSystemService(WINDOW_SERVICE);
+            Display display = manager.getDefaultDisplay();
+            Point point = new Point();
+            display.getSize(point);
+            int width = point.x;
+            int height = point.y;
+            int smd = width<height ? width:height;
+            smd = smd * 3/4;
+            qrgEncoder = new QRGEncoder(url, null, QRGContents.Type.TEXT,smd);
+
+            try{
+                Bitmap bitmap2 = qrgEncoder.encodeAsBitmap();
+
+                bitmap = Bitmap.createScaledBitmap(bitmap2, 250 /*Ancho*/, 250 /*Alto*/, true /* filter*/);
+                //ivImagenQr.setImageBitmap(bitmap);
+                //imprimir();
+            }catch (Exception ex){
+
+            }
+
+        }
+
+        return bitmap;
+
     }
 
     private void validarSeleccionStatus(int position){
@@ -395,6 +633,37 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
         }else{
             layFechaEntrega.setVisibility(View.GONE);
         }
+
+        if(position == 8 | position == 9){
+            layPuntoVenta.setVisibility(View.VISIBLE);
+        }else{
+            layPuntoVenta.setVisibility(View.GONE);
+        }
+
+    }
+
+    private void validarSeleccionTipoOrden(int position){
+        if(position == 0){
+            this.id_cliente_venta = 0;
+            this.txtNombreClienteVenta.setEnabled(false);
+            this.txtPrecioVenta.setEnabled(false);
+            this.btnNuevoClienteVenta.setEnabled(false);
+            this.txtNombreClienteVenta.getEditText().setText("");
+            this.txtPrecioVenta.getEditText().setText("");
+
+            this.txtNombreCliente.setEnabled(true);
+            this.btnNuevoCliente.setEnabled(true);
+        }else{
+            this.txtNombreClienteVenta.setEnabled(true);
+            this.txtPrecioVenta.setEnabled(true);
+            this.btnNuevoClienteVenta.setEnabled(true);
+
+            this.id_cliente = 0;
+            this.txtNombreCliente.setEnabled(false);
+            this.btnNuevoCliente.setEnabled(false);
+            this.txtNombreCliente.getEditText().setText("");
+            this.txtCelular.getEditText().setText("");
+        }
     }
 
     private boolean validarCliente(){
@@ -402,11 +671,27 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
 
         String val = txtNombreCliente.getEditText().getText().toString();
 
-        if(val.isEmpty()){
+        if (val.isEmpty() & this.tipoSelected == 0) {
             txtNombreCliente.setError("Seleccione el Cliente");
             valido = false;
-        }else{
+        } else {
             txtNombreCliente.setError(null);
+            valido = true;
+        }
+
+        return valido;
+    }
+
+    private boolean validarClienteVenta(){
+        boolean valido = false;
+
+        String val = txtNombreClienteVenta.getEditText().getText().toString();
+
+        if(val.isEmpty() & this.tipoSelected == 1 & this.statusSelected == 9){
+            txtNombreClienteVenta.setError("Seleccione el Cliente Venta");
+            valido = false;
+        }else{
+            txtNombreClienteVenta.setError(null);
             valido = true;
         }
 
@@ -464,10 +749,9 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
         return valido;
     }
 
-
     public void loadTecnicos(View view){
 
-
+        Log.i("CargarTecnicos", "Se cargaran los tecnicos");
         GlobalVariables variablesGlobales = new GlobalVariables();
         String bd = variablesGlobales.bd;
 
@@ -479,10 +763,48 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
                     public void onResponse(String response) {
 
                         // After done Loading store JSON response in FinalJSonObject string variable.
-                        FinalJSonObject = response ;
+                        FinalJSonObjectTecnicos = response ;
 
                         // Calling method to parse JSON object.
                         new NuevaOrdenServicio.ParseJSonDataClassTecnicos(mView.getContext()).execute();
+
+                    }
+                },
+                new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+
+                        // Showing error message if something goes wrong.
+                        Toast.makeText(mView.getContext(),error.getMessage(),Toast.LENGTH_LONG).show();
+
+                    }
+                });
+
+        // Creating String Request Object.
+        RequestQueue requestQueue = Volley.newRequestQueue(mView.getContext());
+
+        // Passing String request into RequestQueue.
+        requestQueue.add(stringRequest);
+    }
+
+    public void loadPuntosVenta(View view){
+
+        Log.i("CargarPuntosVentas", "Se cargaran los puntos de ventas");
+        GlobalVariables variablesGlobales = new GlobalVariables();
+        String bd = variablesGlobales.bd;
+
+        HTTP_URL = variablesGlobales.URLServicio + "obtenerpuntosventa.php?basedatos=" + bd;
+        // Creating StringRequest and set the JSON server URL in here.
+        StringRequest stringRequest = new StringRequest(HTTP_URL,
+                new Response.Listener<String>() {
+                    @Override
+                    public void onResponse(String response) {
+
+                        // After done Loading store JSON response in FinalJSonObject string variable.
+                        FinalJSonObjectPuntosVentas = response ;
+
+                        // Calling method to parse JSON object.
+                        new NuevaOrdenServicio.ParseJSonDataClassPuntosVenta(mView.getContext()).execute();
 
                     }
                 },
@@ -509,11 +831,11 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
         String estado =  "";
 
         if(statusSelected == 2){
-            estado =  "Estimado "+ txtNombreCliente.getEditText().getText().toString() +" se le informa que el equipo: "+ txtEquipo.getEditText().getText().toString() + " modelo: "+ txtModelo.getEditText().getText().toString() + " se encuentra " + spnStatus.getSelectedItem().toString() + " y el total de la reparación seria: $ " + txtPresupuesto.getEditText().getText().toString() + ", favor de confirmar por este medio.";
+            estado =  "Estimado "+ txtNombreCliente.getEditText().getText().toString() +" se le informa que el equipo: "+ txtEquipo.getEditText().getText().toString() + " modelo: "+ txtModelo.getEditText().getText().toString() + " folio: "+ txtFolio.getEditText().getText().toString() + " se encuentra " + spnStatus.getSelectedItem().toString() + " y el total de la reparación seria: $ " + txtPresupuesto.getEditText().getText().toString() + ", favor de confirmar por este medio.";
         }else if(statusSelected == 4) {
-            estado = "Estimado " + txtNombreCliente.getEditText().getText().toString() + " se le informa que el equipo: " + txtEquipo.getEditText().getText().toString() + " modelo: " + txtModelo.getEditText().getText().toString() + " se encuentra " + spnStatus.getSelectedItem().toString() + " puede pasar por el equipo en un horario de 9:00 am a 6:00 pm de Lunes a Viernes y 9:00 am a 2:00 pm los Sabados.";
+            estado = "Estimado " + txtNombreCliente.getEditText().getText().toString() + " se le informa que el equipo: " + txtEquipo.getEditText().getText().toString() + " modelo: " + txtModelo.getEditText().getText().toString() + " folio: "+ txtFolio.getEditText().getText().toString() + " se encuentra " + spnStatus.getSelectedItem().toString() + " puede pasar por el equipo en un horario de 9:00 am a 5:30 pm de Lunes a Viernes y 9:00 am a 2:00 pm los Sabados, despues de 30 dias no nos hacemos responsables de los equipos.";
         }else{
-            estado =  "Estimado "+ txtNombreCliente.getEditText().getText().toString() +" se le informa que el equipo: "+ txtEquipo.getEditText().getText().toString() + " modelo: "+ txtModelo.getEditText().getText().toString() + " se encuentra " + spnStatus.getSelectedItem().toString();
+            estado =  "Estimado "+ txtNombreCliente.getEditText().getText().toString() +" se le informa que el equipo: "+ txtEquipo.getEditText().getText().toString() + " modelo: "+ txtModelo.getEditText().getText().toString() + " folio: "+ txtFolio.getEditText().getText().toString() + " se encuentra " + spnStatus.getSelectedItem().toString();
         }
 
         String phone = txtCelular.getEditText().getText().toString();
@@ -645,6 +967,61 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
             }
 
 
+        }else{
+            if (resultCode == RESULT_OK) {
+                switch (requestCode) {
+                    case REQUEST_DISPOSITIVO:
+
+
+                        final String direccionDispositivo = data.getExtras().getString("DireccionDispositivo");
+                        final String nombreDispositivo = data.getExtras().getString("NombreDispositivo");
+
+                        // Obtenemos el dispositivo con la direccion seleccionada en la lista
+                        dispositivoBluetooth = bluetoothAdapter.getRemoteDevice(direccionDispositivo);
+
+                        new Thread(new Runnable() {
+                            @Override
+                            public void run() {
+                                try {
+                                    // Conectamos los dispositivos
+
+                                    // Creamos un socket
+                                    bluetoothSocket = dispositivoBluetooth.createRfcommSocketToServiceRecord(aplicacionUUID);
+                                    bluetoothSocket.connect();// conectamos el socket
+                                    outputStream = bluetoothSocket.getOutputStream();
+                                    inputStream = bluetoothSocket.getInputStream();
+
+                                    //empezarEscucharDatos();
+
+                                    runOnUiThread(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            conectada = true;
+                                            Toast.makeText(getApplicationContext(), "Dispositivo Conectado", Toast.LENGTH_SHORT).show();
+                                        }
+                                    });
+
+                                } catch (IOException e) {
+                                    runOnUiThread(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            conectada = false;
+                                            Toast.makeText(getApplicationContext(), "No se pudo conectar el dispositivo", Toast.LENGTH_SHORT).show();
+                                        }
+                                    });
+                                    //Log.e(TAG_DEBUG, "Error al conectar el dispositivo bluetooth");
+                                    conectada = false;
+                                    //e.printStackTrace();
+                                }
+                            }
+                        }).start();
+
+                        break;
+
+                }
+
+
+            }
         }
 
 
@@ -654,9 +1031,11 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
     {
         if(id_orden_servicio > 0){
             btnLimpiar.setImageResource(R.drawable.icono_delete);
+            btnImprimirRecibo.setVisibility(View.VISIBLE);
 
         }else{
             btnLimpiar.setImageResource(R.drawable.paint_brush);
+            btnImprimirRecibo.setVisibility(View.INVISIBLE);
         }
     }
 
@@ -684,6 +1063,7 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
         GlobalVariables variablesGlobales = new GlobalVariables();
         final String bd = variablesGlobales.bd;
         final int id_empresa = variablesGlobales.id_empresa;
+        final int id_usuario = variablesGlobales.id_usuario;
 
         HTTP_URL =variablesGlobales.URLServicio + "guardarordenservicio.php?";
         // Creating StringRequest and set the JSON server URL in here.
@@ -726,6 +1106,8 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
 
                 String id_orden = String.valueOf(id_orden_servicio);
                 String id_cte = String.valueOf(id_cliente);
+                String id_cte_vta = String.valueOf(id_cliente_venta);
+
                 String nombre_cliente = txtNombreCliente.getEditText().getText().toString();
                 String celular = txtCelular.getEditText().getText().toString();
                 String fecha = parsedDate;
@@ -734,15 +1116,24 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
                 String modelo_equipo = txtModelo.getEditText().getText().toString();
                 String serie_equipo = txtSerie.getEditText().getText().toString();
                 String descripcion_falla = txtFalla.getEditText().getText().toString();
+                String nombre_cliente_venta = txtNombreClienteVenta.getEditText().getText().toString();
 
                 String id_tecnico = String.valueOf(spinnerMap.get(txtTecnico.getSelectedItemPosition()));
                 String descripcion_diagnostico = txtDiagnostico.getEditText().getText().toString();
                 String descripcion_reparacion = txtReparacion.getEditText().getText().toString();
+                String id_puntoventa = String.valueOf(spinnerMapPuntoVenta.get(txtPuntoVenta.getSelectedItemPosition()));
                 String importe_presupuesto = "0";
+                String precio_venta = "0";
+
                 if(!txtPresupuesto.getEditText().getText().toString().isEmpty())
                     importe_presupuesto = txtPresupuesto.getEditText().getText().toString();
 
+                if(!txtPrecioVenta.getEditText().getText().toString().isEmpty())
+                    precio_venta = txtPrecioVenta.getEditText().getText().toString();
+
                 String status_servicio = String.valueOf(statusSelected + 1);
+
+                String tipo_servicio = String.valueOf(tipoSelected + 1);
 
                 //ContentBody foto = new FileBody(file, "image/jpeg");
 
@@ -766,6 +1157,11 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
                 parametros.put("importe_presupuesto", importe_presupuesto);
                 parametros.put("status_servicio", status_servicio);
 
+                parametros.put("tipo_servicio", tipo_servicio);
+                parametros.put("id_cliente_venta", id_cte_vta);
+                parametros.put("id_puntodeventa", id_puntoventa);
+                parametros.put("precio_venta", precio_venta);
+
                 if(reenviarImagen == 1 && photobmp != null){
                     imagen =  convertirImgString(photobmp);
                     parametros.put("nombre_imagen", nombreImagen);
@@ -786,10 +1182,7 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
 
                 parametros.put("basedatos", bd);
                 parametros.put("id_empresa", String.valueOf(id_empresa));
-
-
-
-
+                parametros.put("id_usuario", String.valueOf(id_usuario));
 
                 return parametros;
             }
@@ -912,6 +1305,12 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
 
                             //Storing ID into subject list.
                             orden.id_orden_servicio = Integer.parseInt(jsonObjectDatos.getString("id_orden_servicio"));
+                            orden.nombre_cliente = jsonObjectDatos.getString("nombre_cliente");
+                            orden.fecha = jsonObjectDatos.getString("fecha");
+                            orden.descripcion_falla = jsonObjectDatos.getString("descripcion_falla");
+                            orden.nombre_equipo = jsonObjectDatos.getString("nombre_equipo");
+                            orden.modelo_equipo = jsonObjectDatos.getString("modelo_equipo");
+                            orden.serie_equipo = jsonObjectDatos.getString("serie_equipo");
 
 
 
@@ -952,7 +1351,9 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
             sDialogo.setTitleText(this.msg);
             sDialogo.show();
 
-            if(enviarMSMCliente == 1)
+            GlobalVariables vg = new GlobalVariables();
+
+            if(vg.config_enviamensaje == 1 & enviarMSMCliente == 1)
                 sendMessage();
 
 
@@ -1030,6 +1431,92 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
         }
     }
 
+    private class ParseJSonDataClassGetConfiguracion extends AsyncTask<Void, Void, Void> {
+
+        public Context context;
+        public View view;
+        public String msg;
+        public JSONObject jsonObject = null;
+        // Creating List of Subject class.
+
+
+        public ParseJSonDataClassGetConfiguracion(View view) {
+            this.view = view;
+            this.context = view.getContext();
+        }
+
+        //@Override
+        protected void onPreExecute() {
+
+            super.onPreExecute();
+        }
+
+        //@Override
+        protected Void doInBackground(Void... arg0) {
+
+            try {
+
+                // Checking whether FinalJSonObject is not equals to null.
+                if (FinalJSonObjectConfiguracion != null) {
+
+                    // Creating and setting up JSON array as null.
+                    JSONArray jsonArray = null,jsonArrayDatos = null;
+                    JSONObject jsonObjectDatos;
+                    try {
+
+                        jsonObject = new JSONObject(FinalJSonObjectConfiguracion);
+                        jsonArray = jsonObject.getJSONArray("datos");
+                        jsonObject = jsonArray.getJSONObject(0);
+
+                        /*runOnUiThread(new Runnable() {
+                            public void run() {
+                                Toast.makeText(NuevaOrdenServicio.this,msg,Toast.LENGTH_SHORT).show();
+                            }
+                        });*/
+
+
+                    } catch (JSONException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
+                }
+            } catch (Exception e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void result)
+
+        {
+            Configuracion config = new Configuracion();
+            config.setNombre_empresa(jsonObject.optString("nombre_empresa"));
+            config.setDireccion(jsonObject.optString("direccion"));
+            config.setTelefono(jsonObject.optString("telefono"));
+            config.setLeyenda1(jsonObject.optString("leyenda1"));
+            config.setLeyenda2(jsonObject.optString("leyenda2"));
+            config.setImprimeticket(parseInt(jsonObject.optString("imprimeticket")));
+            config.setEnviamensaje(parseInt(jsonObject.optString("enviamensaje")));
+
+            GlobalVariables variablesGlobales = new GlobalVariables();
+
+            variablesGlobales.config_nombre_empresa = config.getNombre_empresa();
+            variablesGlobales.config_direccion = config.getDireccion();
+            variablesGlobales.config_telefono = config.getTelefono();
+            variablesGlobales.config_leyenda1 = config.getLeyenda1();
+            variablesGlobales.config_leyenda2 = config.getLeyenda2();
+            variablesGlobales.config_imprimeticket = config.getImprimeticket();
+            variablesGlobales.config_enviamensaje = config.getEnviamensaje();
+
+            Log.i("Configuracion", "Se cargo la configuracion");
+
+            loadTecnicos(mView);
+
+        }
+    }
+
     private void showDatePickerDialog() {
         DatePickerFragment newFragment = DatePickerFragment.newInstance(new DatePickerDialog.OnDateSetListener() {
             @Override
@@ -1048,8 +1535,11 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
     }
 
     public void setValues(OrdenServicio orden) {
+        ordenImpresion = orden;
+
         id_orden_servicio = orden.id_orden_servicio;
         id_cliente = orden.id_cliente;
+
         this.txtFolio.getEditText().setText(String.valueOf(orden.id_orden_servicio));
         this.txtNombreCliente.getEditText().setText(orden.nombre_cliente);
         this.txtCelular.getEditText().setText(orden.celular);
@@ -1106,9 +1596,16 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
 
         spnStatus.setSelection(orden.status_servicio - 1);
         txtTecnico.setSelection(getIndexTecnico(orden.id_tecnico));
-        //txtTecnico.setSelection(orden.id_tecnico);
         statusSelected = orden.status_servicio - 1;
         tecnicoSelected = getIndexTecnico(orden.id_tecnico);
+
+        id_cliente_venta = orden.id_cliente_venta;
+        spnTipoOrden.setSelection(orden.tipo_servicio - 1);
+        txtPuntoVenta.setSelection(getIndexPuntoVenta(orden.id_puntodeventa));
+        tipoSelected = orden.tipo_servicio - 1;
+        puntoventaSelected = getIndexPuntoVenta(orden.id_puntodeventa);
+        this.txtPrecioVenta.getEditText().setText(String.valueOf(orden.precio_venta));
+        this.txtNombreClienteVenta.getEditText().setText(orden.nombre_cliente_venta);
 
         validarSeleccionStatus(statusSelected);
 
@@ -1127,7 +1624,20 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
         return index;
     }
 
+    private int getIndexPuntoVenta(int value){
+        int index = -1;
+        for (int x = 0; x < puntosventasList.size(); x++) {
+            PuntoVenta t = puntosventasList.get(x);
+            if (t.getId_puntodeventa() == value) {
+                index = x;
+                break; // Terminar ciclo, pues ya lo encontramos
+            }
+        }
+        return index;
+    }
+
     public void setValuesSafe(OrdenServicio orden) {
+        ordenImpresion = orden;
         id_orden_servicio = orden.id_orden_servicio;
         //id_cliente = orden.id_cliente;
         this.txtFolio.getEditText().setText(String.valueOf(orden.id_orden_servicio));
@@ -1152,6 +1662,9 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
         this.txtReparacion.getEditText().setText("");
         this.txtPresupuesto.getEditText().setText("");
 
+        this.txtNombreClienteVenta.getEditText().setText("");
+        this.txtPrecioVenta.getEditText().setText("");
+
         final Calendar c = Calendar.getInstance();
         int year = c.get(Calendar.YEAR);
         int month = c.get(Calendar.MONTH);
@@ -1165,8 +1678,11 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
 
         spnStatus.setSelection(0);
         txtTecnico.setSelection(0);
+        spnTipoOrden.setSelection(0);
+
         statusSelected = 0;
         tecnicoSelected = 0;
+        tipoSelected = 0;
 
         nombreImagen = null;
         photobmp = null;
@@ -1210,29 +1726,6 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
                     }
                 });
         sDialog.show();
-
-
-
-        /*AlertDialog.Builder alerta =  new AlertDialog.Builder(this);
-        alerta.setMessage("Desea eliminar la Orden de Servicio?")
-                .setCancelable(false)
-                .setPositiveButton("SI", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        procesarEliminar(mView);
-                        //dialogo.dismiss();
-                    }
-                })
-                .setNegativeButton("NO", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        dialog.cancel();
-                    }
-                });
-
-        AlertDialog titulo = alerta.create();
-        titulo.setTitle("Eliminar");
-        titulo.show();*/
     }
 
     public void setValuesDefault(){
@@ -1249,9 +1742,16 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
         spnStatus.setSelection(0);
         txtTecnico.setSelection(0);
 
+        spnTipoOrden.setSelection(0);
+        txtPuntoVenta.setSelection(0);
+
+
         statusSelected = 0;
         tecnicoSelected = 0;
         reenviarImagen = 0;
+        tipoSelected = 0;
+
+        setIconoLimpiar();
 
         validarSeleccionStatus(statusSelected);
     }
@@ -1277,11 +1777,14 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
         this.txtPresupuesto.setEnabled(false);
         this.spnStatus.setEnabled(false);
 
-       if(variables.rol == 1) {
+        this.spnTipoOrden.setEnabled(false);
+
+
+       if(variables.rol == 1 /*ADMINISTRADOR*/) {
            this.txtPresupuesto.setEnabled(true);
            this.spnStatus.setEnabled(true);
        }
-       if(variables.rol == 2 || variables.rol == 3)
+       if(variables.rol == 3 /*VENDEDOR*/)
        {
            this.txtFecha.setEnabled(true);
            this.txtNombreCliente.setEnabled(true);
@@ -1294,8 +1797,10 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
            this.btnCamaraBack.setEnabled(true);
            this.btnCamaraTecnico.setEnabled(true);
            this.btnNuevoCliente.setEnabled(true);
+           this.spnTipoOrden.setEnabled(true);
+
        }
-       if(variables.rol == 4)
+       if(variables.rol == 4 /*TECNICO*/)
        {
            this.txtTecnico.setEnabled(false);
            this.txtDiagnostico.setEnabled(true);
@@ -1304,7 +1809,7 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
            this.btnCamaraTecnico.setEnabled(true);
        }
 
-       if(variables.rol == 5){
+       if(variables.rol == 2 /*SUPERVISOR*/ || variables.rol == 5 /*SUPER*/){
            this.txtFecha.setEnabled(true);
            this.txtNombreCliente.setEnabled(true);
            //this.txtCelular.setEnabled(true);
@@ -1324,6 +1829,11 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
            this.spnStatus.setEnabled(true);
 
            this.btnNuevoCliente.setEnabled(true);
+
+           this.spnTipoOrden.setEnabled(true);
+           this.txtNombreClienteVenta.setEnabled(true);
+           this.txtPrecioVenta.setEnabled(true);
+           this.btnNuevoClienteVenta.setEnabled(true);
        }
 
     }
@@ -1399,6 +1909,11 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
                             orden.importe_presupuesto = Double.parseDouble(jsonObject.getString("importe_presupuesto"));
                             orden.id_tecnico = Integer.parseInt(jsonObject.getString("id_tecnico"));
 
+                            orden.id_cliente_venta = Integer.parseInt(jsonObject.getString("id_cliente_venta"));
+                            orden.tipo_servicio = Integer.parseInt(jsonObject.getString("tipo_servicio"));
+                            orden.id_puntodeventa = Integer.parseInt(jsonObject.getString("id_puntodeventa"));
+                            orden.precio_venta = Double.parseDouble(jsonObject.getString("precio_venta"));
+                            orden.nombre_cliente_venta = jsonObject.getString("nombre_cliente_venta");
 
 
                     } catch (JSONException e) {
@@ -1419,7 +1934,9 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
         {
 
           setValues(orden);
+
           pDialogo.dismiss();
+
 
 
         }
@@ -1450,14 +1967,14 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
             try {
 
                 // Checking whether FinalJSonObject is not equals to null.
-                if (FinalJSonObject != null) {
+                if (FinalJSonObjectTecnicos != null) {
 
                     // Creating and setting up JSON array as null.
                     JSONArray jsonArray = null;
                     try {
 
                         // Adding JSON response object into JSON array.
-                        jsonArray = new JSONArray(FinalJSonObject);
+                        jsonArray = new JSONArray(FinalJSonObjectTecnicos);
 
                         // Creating JSON Object.
                         JSONObject jsonObject;
@@ -1483,7 +2000,7 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
                             tecnicosList.add(tecnico);
                         }
 
-
+                        Log.v("DatosTecnicos",FinalJSonObjectTecnicos);
 
                     } catch (JSONException e) {
                         // TODO Auto-generated catch block
@@ -1502,6 +2019,104 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
 
         {
             populateSpinner();
+
+            Log.i("TecnicosCargados","Se cargaron los tecnicos");
+
+            loadPuntosVenta(mView);
+
+        }
+    }
+
+    private class ParseJSonDataClassPuntosVenta extends AsyncTask<Void, Void, Void> {
+
+        public Context context;
+
+        // Creating List of Subject class.
+        PuntoVenta puntoVenta;
+
+        public ParseJSonDataClassPuntosVenta(Context context) {
+
+            this.context = context;
+
+        }
+
+        //@Override
+        protected void onPreExecute() {
+
+            super.onPreExecute();
+        }
+
+        //@Override
+        protected Void doInBackground(Void... arg0) {
+
+            try {
+
+                // Checking whether FinalJSonObject is not equals to null.
+                if (FinalJSonObjectPuntosVentas != null) {
+
+                    // Creating and setting up JSON array as null.
+                    JSONArray jsonArray = null;
+                    try {
+
+                        // Adding JSON response object into JSON array.
+                        jsonArray = new JSONArray(FinalJSonObjectPuntosVentas);
+
+                        // Creating JSON Object.
+                        JSONObject jsonObject;
+
+                        // Creating Subject class object.
+                        PuntoVenta puntoVenta;
+
+                        // Defining CustomSubjectNamesList AS Array List.
+                        puntosventasList = new ArrayList<PuntoVenta>();
+
+                        for (int i = 0; i < jsonArray.length(); i++) {
+
+                            puntoVenta = new PuntoVenta();
+
+                            jsonObject = jsonArray.getJSONObject(i);
+
+                            //Storing ID into subject list.
+                            puntoVenta.setId_puntodeventa(Integer.parseInt(jsonObject.getString("id_puntodeventa")));
+                            puntoVenta.setDescripcion_puntodeventa(jsonObject.getString("descripcion_puntodeventa"));
+
+
+                            // Adding subject list object into CustomSubjectNamesList.
+                            puntosventasList.add(puntoVenta);
+                        }
+
+                        Log.v("DatosPuntosVentas", FinalJSonObjectPuntosVentas);
+
+                    } catch (JSONException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
+                }
+            } catch (Exception e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void result)
+
+        {
+
+            populateSpinnerPuntosVenta ();
+            Log.i("PuntosVentasCargados", "Se cargaron los puntos de ventas");
+
+            if(id_orden_servicio > 0){
+                loadOrden(mView);
+                setIconoLimpiar();
+
+            }else{
+                setValuesDefault();
+            }
+
+            changeViewRol();
+
 
 
 
@@ -1524,6 +2139,23 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
 
         ArrayAdapter<String> spinnerAdapter = new ArrayAdapter<String>(NuevaOrdenServicio.this,android.R.layout.simple_spinner_dropdown_item, spinnerArray);
         txtTecnico.setAdapter(spinnerAdapter);
+    }
+
+    private void populateSpinnerPuntosVenta() {
+        //tecnico.setId_tecnico(Integer.parseInt(jsonObject.getString("id_usuario")));
+        spinnerArrayPuntoVenta = new String[puntosventasList.size()];
+        spinnerMapPuntoVenta = new HashMap<Integer, Integer>();
+        PuntoVenta puntoVenta;
+        for (int i = 0; i < puntosventasList.size(); i++)
+        {
+            puntoVenta = new PuntoVenta();
+            puntoVenta = puntosventasList.get(i);
+            spinnerMapPuntoVenta.put(i,puntoVenta.getId_puntodeventa());
+            spinnerArrayPuntoVenta[i] = puntoVenta.getDescripcion_puntodeventa();
+        }
+
+        ArrayAdapter<String> spinnerAdapter = new ArrayAdapter<String>(NuevaOrdenServicio.this,android.R.layout.simple_spinner_dropdown_item, spinnerArrayPuntoVenta);
+        txtPuntoVenta.setAdapter(spinnerAdapter);
     }
 
     public void loadOrden(View view){
@@ -1567,6 +2199,152 @@ public class NuevaOrdenServicio extends AppCompatActivity implements CuadroDialo
 
         // Passing String request into RequestQueue.
         requestQueue.add(stringRequest);
+    }
+
+    private void cerrarConexion() {
+        try {
+            if (bluetoothSocket != null) {
+                if (outputStream != null) outputStream.close();
+                pararLectura = true;
+                if (inputStream != null) inputStream.close();
+                bluetoothSocket.close();
+                Toast.makeText(getApplicationContext(), "Conexion a impresora finalizada", Toast.LENGTH_SHORT).show();
+
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    public void clickBuscarDispositivosSync() {
+        // Cerramos la conexion antes de establecer otra
+        cerrarConexion();
+
+        Intent intentLista = new Intent(getApplicationContext(), ListaBluetoohtActivity.class);
+        startActivityForResult(intentLista, REQUEST_DISPOSITIVO);
+        //getParentFragment().startActivityForResult(new Intent(getActivity().getApplicationContext(), ListaBluetoohtActivity.class), REQUEST_DISPOSITIVO);
+
+    }
+
+    public static byte[] getByteString(String str, int bold, int font, int widthsize, int heigthsize) {
+
+        if (str.length() == 0 | widthsize < 0 | widthsize > 3 | heigthsize < 0 | heigthsize > 3
+                | font < 0 | font > 1)
+            return null;
+
+        byte[] strData = null;
+        try {
+            strData = str.getBytes("iso-8859-1");
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+            return null;
+        }
+
+        byte[] command = new byte[strData.length + 9];
+
+        byte[] intToWidth = {0x00, 0x10, 0x20, 0x30};//
+        byte[] intToHeight = {0x00, 0x01, 0x02, 0x03};//
+
+        command[0] = 27;// caracter ESC para darle comandos a la impresora
+        command[1] = 69;
+        command[2] = ((byte) bold);
+        command[3] = 27;
+        command[4] = 77;
+        command[5] = ((byte) font);
+        command[6] = 29;
+        command[7] = 33;
+        command[8] = (byte) (intToWidth[widthsize] + intToHeight[heigthsize]);
+
+        System.arraycopy(strData, 0, command, 9, strData.length);
+        return command;
+    }
+
+    private void imprimir() {
+        //imprimir();
+        if(!conectada) {
+            clickBuscarDispositivosSync();
+        }else {
+            if (bluetoothSocket != null) {
+                try {
+
+                    outputStream.write(0x1C);
+                    outputStream.write(0x2E); // Cancelamos el modo de caracteres chino (FS .)
+                    outputStream.write(0x1B);
+                    outputStream.write(0x74);
+                    outputStream.write(0x10); // Seleccionamos los caracteres escape (ESC t n) - n = 16(0x10) para WPC1252
+
+                    // Para que acepte caracteres espciales
+                    //outputStream.write(getByteString(texto, negrita, fuente, ancho, alto));
+
+                    GlobalVariables vg = new GlobalVariables();
+                    String config_nombre_empresa = vg.config_nombre_empresa;
+                    String config_direccion = vg.config_direccion;
+                    String config_telefono = vg.config_telefono;
+                    String config_leyenda1 = vg.config_leyenda1;
+                    String config_leyenda2 = vg.config_leyenda2;
+
+                    String nombre_cliente = ordenImpresion.nombre_cliente;
+                    String fecha = ordenImpresion.fecha;
+                    String falla = ordenImpresion.descripcion_falla;
+                    String equipo = ordenImpresion.nombre_equipo;
+
+                    String texto = "\n";
+                    outputStream.write(ESC_ALIGN_CENTER);
+                    texto += config_nombre_empresa + " \n";
+                    texto += "Tel: " + config_telefono + " \n\n";
+                    texto += "Recibo \n\n";
+                    outputStream.write(getByteString(texto, 1, 1, 1, 1));
+                    outputStream.write(ESC_ALIGN_LEFT);
+                    texto = "Orden de servicio: " + String.valueOf(id_orden_servicio) + "\n";
+                    texto += "Fecha: " + fecha + "\n";
+                    texto += "Cliente: " + nombre_cliente + "\n";
+                    texto += "Equipo: " + equipo + "\n";
+                    texto += "Falla: " + falla + "\n\n";
+                    outputStream.write(getByteString(texto, 0, 1, 0, 0));
+
+                    Bitmap b = getCodigoQr();
+
+                    try {
+
+                        if(b!=null){
+                            byte[] command = Utils.decodeBitmap(b);
+                            outputStream.write(ESC_ALIGN_CENTER);
+                            outputStream.write(command);
+                            texto = "\n\n";
+                            texto += config_leyenda1 + " \n\n";
+                            texto += config_leyenda2 + " \n\n";
+                            texto += "\n\n";
+                            outputStream.write(getByteString(texto, 0, 1, 0, 0));
+                            outputStream.write(ESC_ALIGN_LEFT);
+                        }else{
+                            Log.e("Print Photo error", "the file isn't exists");
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        Log.e("PrintTools", "the file isn't exists");
+                    }
+
+
+
+
+
+
+                } catch (IOException e) {
+
+
+                    Toast.makeText(getApplicationContext(), "Error al interntar imprimir texto", Toast.LENGTH_SHORT).show();
+                    e.printStackTrace();
+                    conectada = false;
+                    clickBuscarDispositivosSync();
+                }
+            } else {
+                Toast.makeText(getApplicationContext(), "Impresora no conectada", Toast.LENGTH_SHORT).show();
+
+
+            }
+        }
+
     }
 
 }

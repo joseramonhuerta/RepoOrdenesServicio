@@ -33,6 +33,8 @@ import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
+import com.google.zxing.integration.android.IntentIntegrator;
+import com.google.zxing.integration.android.IntentResult;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -64,6 +66,7 @@ public class OrdenesServicios extends AppCompatActivity implements CuadroDialogo
     ImageView btnClear;
     ImageView btnCalendario;
     ImageView btnBusqueda;
+    ImageView btnBuscarQr;
     FragmentManager fm = getSupportFragmentManager();
     ProgressDialog pDialogo = null;
     RecyclerView listViewTecnicos;
@@ -103,6 +106,7 @@ public class OrdenesServicios extends AppCompatActivity implements CuadroDialogo
         btnCalendario = (ImageView) findViewById(R.id.btnCalendario);
         btnBusqueda = (ImageView) findViewById(R.id.btnBusquedaOrdenes);
         txtFiltros = (TextView) findViewById(R.id.txtFiltros);
+        btnBuscarQr = (ImageView) findViewById(R.id.btnBuscarQr);
 
         btnNueva.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -180,6 +184,13 @@ public class OrdenesServicios extends AppCompatActivity implements CuadroDialogo
             }
         });
 
+        btnBuscarQr.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                new IntentIntegrator(OrdenesServicios.this).initiateScan();
+            }
+        });
+
         GlobalVariables vg = new GlobalVariables();
 
         if(vg.rol == 4) {
@@ -229,7 +240,7 @@ public class OrdenesServicios extends AppCompatActivity implements CuadroDialogo
     }
 
     private void seleccionarFiltro(View view){
-        String[] opciones = {"Todos", "Recibido", "En Revisión", "Cotizado", "En Reparación","Reparado","Entregado","Devolución"};
+        String[] opciones = {"Todos", "Recibido", "En Revisión", "Cotizado", "En Reparación","Reparado","Entregado","Devolución","En Bodega","En Tienda","Vendida"};
 
         //0=Recibido,1=Revision,2=Cotizacion,3=Reparacion,4=Reparado,5=Entregado,6=Devolucion
         AlertDialog.Builder builder =  new AlertDialog.Builder(this);
@@ -381,6 +392,7 @@ public class OrdenesServicios extends AppCompatActivity implements CuadroDialogo
         return parsedDate;
 
     }
+
     public void loadPedidos(View view){
         actualizarFiltros();
         final View vista = view;
@@ -601,10 +613,51 @@ public class OrdenesServicios extends AppCompatActivity implements CuadroDialogo
             case 7:
                 status = "Devolución";
                 break;
+            case 8:
+                status = "En Bodega";
+                break;
+            case 9:
+                status = "En Tienda";
+                break;
+            case 10:
+                status = "Vendida";
+                break;
         }
 
         String filtros = "Periodo: " + FechaInicio + " - " + FechaFin + "  Status: " + status;
         txtFiltros.setText(filtros);
+    }
+
+    @Override
+    protected  void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        IntentResult result = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
+
+        if(result != null){
+            try{
+                String datos = result.getContents();
+                //"http://getstatusorden.php?basedatos=basededatos&id_orden=12345";
+                String[] items = datos.split("=");
+                int id = Integer.parseInt(items[2]);
+
+                Intent intencion = new Intent(getApplicationContext(), NuevaOrdenServicio.class);
+                intencion.putExtra("ID", id);
+                intencion.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                startActivity(intencion);
+            }catch (Exception e){
+                Toast.makeText(this, "No se encontro la orden de servicio", Toast.LENGTH_LONG).show();
+            }
+
+
+        }
+
+
+
+
+
+
+
     }
 
 }

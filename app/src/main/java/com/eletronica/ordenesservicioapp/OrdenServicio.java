@@ -1,4 +1,4 @@
-package com.eletronica.ordenesservicioapp;
+ package com.eletronica.ordenesservicioapp;
 
 import java.io.Serializable;
 
@@ -34,6 +34,12 @@ public class OrdenServicio implements Serializable {
 
     public int id_tecnico;
     public int id_cliente;
+
+    public int tipo_servicio;
+    public int id_cliente_venta;
+    public int id_puntodeventa;
+    public double precio_venta;
+    public String nombre_cliente_venta;
 
 
 }

@@ -46,9 +46,9 @@ public class NuevoCliente extends AppCompatActivity {
     int id_cliente = 0;
 
     View mView;
+
     String HTTP_URL;
     String FinalJSonObject;
-
     StringRequest stringRequest;
 
     TextInputLayout txtIDCliente;
